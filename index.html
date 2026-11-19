@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>เครื่องน้ำวัดระดับน้ำ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #14301a;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* เวที 1920x1080 ย่อ/ขยายให้เต็มจอ (cover) */
+  #stage {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 1920px; height: 1080px;
+    transform-origin: center center;
+    background: url("2.png") center / 100% 100% no-repeat;
+    font-family: "Kanit", "Prompt", sans-serif;
+  }
+
+  /* ปิดหัวข้อเดิมที่ฝังมากับรูปพื้นหลัง */
+  #title-mask {
+    position: absolute;
+    left: 520px; top: -20px;
+    width: 770px; height: 190px;
+    background: rgb(221, 208, 216);
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 55%, transparent 100%);
+            mask-image: radial-gradient(ellipse at center, #000 55%, transparent 100%);
+  }
+
+  #title {
+    position: absolute;
+    left: 0; width: 1810px;
+    top: 14px;
+    text-align: center;
+    font-weight: 300;
+    font-size: 128px;
+    line-height: 1.35;
+    color: #4a2a1a;
+    text-shadow: 0 6px 18px rgba(74, 42, 26, .35);
+    white-space: nowrap;
+  }
+
+  /* ป้ายกำกับ (ชั้นเดียวกับที่อยู่ในรูปพื้นหลังอยู่แล้ว) */
+  .label {
+    position: absolute;
+    top: 222px;
+    width: 266px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 52px;
+    color: #ffe0a3;
+    pointer-events: none;
+  }
+  #label1 { left: 410px; }
+  #label2 { left: 783px; }
+
+  /* กล่องตัวเลข */
+  .box {
+    position: absolute;
+    top: 365px;
+    width: 265px; height: 197px;
+    background: #cbd0d9;
+    border-radius: 55px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #box1 { left: 410px; }
+  #box2 { left: 783px; }
+
+  .value {
+    font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+    font-weight: 700;
+    font-size: 70px;
+    color: #fff;
+    transition: transform .25s ease;
+  }
+  #box1 .value { transform: translateY(14px); }
+  #box2 .value { transform: translateY(-1px); }
+  .value.tick { animation: pop .3s ease; }
+  @keyframes pop { 50% { opacity: .55; } }
+
+  /* ค้างคาว */
+  .bat {
+    position: absolute;
+    pointer-events: none;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,.25));
+  }
+  #bat1 { left: 318px; top: 292px; width: 420px; }
+  #bat2 { left: 690px; top: 298px; width: 450px; }
+
+  /* Toggle */
+  .toggle {
+    position: absolute;
+    top: 596px;
+    width: 243px; height: 107px;
+    border-radius: 54px;
+    background: #3d5a14;
+    cursor: pointer;
+    transition: background .3s ease;
+    touch-action: none;
+    outline: none;
+  }
+  #toggle1 { left: 410px; }
+  #toggle2 { left: 785px; }
+  .toggle .knob {
+    position: absolute;
+    left: 0; top: 3px;
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: #655f38;
+    transition: transform .3s cubic-bezier(.4,.1,.2,1), background .3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  .toggle.on { background: #5e8c1c; }
+  .toggle.on .knob { transform: translateX(143px); background: #e9dfa2; }
+  .toggle.dragging .knob, .toggle.dragging { transition: none; }
+  .toggle:focus-visible { box-shadow: 0 0 0 6px rgba(255, 224, 163, .6); }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="title-mask"></div>
+  <h1 id="title">เครื่องน้ำวัดระดับน้ำ</h1>
+
+  <div class="label" id="label1">ระดับน้ำ</div>
+  <div class="label" id="label2">อุณหภูมิ</div>
+
+  <div class="box" id="box1"><span class="value" id="val1">25</span></div>
+  <div class="box" id="box2"><span class="value" id="val2">150</span></div>
+
+  <!-- SVG ค้างคาว -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="holo" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0"   stop-color="#bfeaff"/>
+        <stop offset=".35" stop-color="#e6a8ff"/>
+        <stop offset=".65" stop-color="#ffc4ec"/>
+        <stop offset="1"   stop-color="#b6dcff"/>
+      </linearGradient>
+
+      <g id="wing">
+        <path d="M222,42 C262,18 335,8 410,16
+                 C386,28 374,40 376,54
+                 C358,44 340,52 334,66
+                 C318,56 300,60 292,74
+                 C280,62 262,64 252,78
+                 C244,68 234,66 226,72 Z"/>
+      </g>
+      <g id="bat">
+        <use href="#wing"/>
+        <use href="#wing" transform="translate(420,0) scale(-1,1)"/>
+        <path d="M200,34 L194,8 L209,26 Z M220,34 L226,8 L211,26 Z"/>
+        <ellipse cx="210" cy="52" rx="16" ry="24"/>
+      </g>
+      <g id="veins" fill="none" stroke="#c9a2f0" stroke-width="1.4" stroke-linecap="round">
+        <path d="M226,46 C270,40 330,32 392,22 M228,52 L335,64 M228,56 L292,74 M228,58 L252,78"/>
+        <path d="M194,46 C150,40 90,32 28,22 M192,52 L85,64 M192,56 L128,74 M192,58 L168,78"/>
+        <circle cx="203" cy="46" r="2.4" fill="#ff7fd1" stroke="none"/>
+        <circle cx="217" cy="46" r="2.4" fill="#ff7fd1" stroke="none"/>
+      </g>
+    </defs>
+  </svg>
+
+  <svg class="bat" id="bat1" viewBox="0 0 420 100">
+    <use href="#bat" fill="url(#holo)" stroke="url(#holo)" stroke-width="16" stroke-linejoin="round"/>
+    <use href="#bat" fill="#0a0a0f"/>
+    <use href="#veins"/>
+  </svg>
+  <svg class="bat" id="bat2" viewBox="0 0 420 100">
+    <use href="#bat" fill="url(#holo)" stroke="url(#holo)" stroke-width="16" stroke-linejoin="round"/>
+    <use href="#bat" fill="#0a0a0f"/>
+    <use href="#veins"/>
+  </svg>
+
+  <!-- Toggle -->
+  <div class="toggle" id="toggle1" role="switch" aria-checked="false" aria-label="สุ่มระดับน้ำอัตโนมัติ" tabindex="0">
+    <div class="knob"></div>
+  </div>
+  <div class="toggle" id="toggle2" role="switch" aria-checked="false" aria-label="สุ่มอุณหภูมิอัตโนมัติ" tabindex="0">
+    <div class="knob"></div>
+  </div>
+</div>
+
+<script>
+  /* ---------- ปรับขนาดให้เต็มจอ (cover) ---------- */
+  const stage = document.getElementById('stage');
+  function fit() {
+    const s = Math.max(innerWidth / 1920, innerHeight / 1080);
+    stage.style.transform = `translate(-50%, -50%) scale(${s})`;
+  }
+  addEventListener('resize', fit);
+  fit();
+
+  /* ---------- ตั้งค่าช่วงตัวเลขสุ่ม ---------- */
+  const CONFIG = {
+    water: { min: 0, max: 200 },
+    temp:  { min: 0, max: 200 },
+    intervalMs: 1000            // ความถี่อัปเดตเมื่อเปิด toggle
+  };
+
+  const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+  const sensors = [
+    { el: document.getElementById('val1'), range: CONFIG.water, timer: null },
+    { el: document.getElementById('val2'), range: CONFIG.temp,  timer: null }
+  ];
+
+  function randomize(s) {
+    s.el.textContent = rand(s.range.min, s.range.max);
+    s.el.classList.remove('tick');
+    void s.el.offsetWidth;
+    s.el.classList.add('tick');
+  }
+
+  // สุ่มค่าเริ่มต้นตอนโหลดหน้า
+  sensors.forEach(randomize);
+
+  /* ---------- Toggle: คลิก / ลาก / คีย์บอร์ด ---------- */
+  const MAX_X = 143;  // ระยะเลื่อนของ knob (px ในเวที 1920)
+
+  function setState(toggle, sensor, on) {
+    toggle.classList.toggle('on', on);
+    toggle.setAttribute('aria-checked', on);
+    clearInterval(sensor.timer);
+    sensor.timer = null;
+    if (on) {
+      randomize(sensor);
+      sensor.timer = setInterval(() => randomize(sensor), CONFIG.intervalMs);
+    }
+  }
+
+  function initToggle(id, sensor) {
+    const toggle = document.getElementById(id);
+    const knob = toggle.querySelector('.knob');
+    let startX = 0, startOn = false, dragging = false, moved = false;
+
+    const scale = () => toggle.getBoundingClientRect().width / 243;
+
+    toggle.addEventListener('pointerdown', e => {
+      toggle.setPointerCapture(e.pointerId);
+      startX = e.clientX;
+      startOn = toggle.classList.contains('on');
+      dragging = true; moved = false;
+      toggle.classList.add('dragging');
+    });
+
+    toggle.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      const dx = (e.clientX - startX) / scale();
+      if (Math.abs(dx) > 4) moved = true;
+      if (!moved) return;
+      const x = Math.min(MAX_X, Math.max(0, (startOn ? MAX_X : 0) + dx));
+      knob.style.transform = `translateX(${x}px)`;
+      knob.dataset.x = x;
+    });
+
+    toggle.addEventListener('pointerup', () => {
+      if (!dragging) return;
+      dragging = false;
+      toggle.classList.remove('dragging');
+      let on;
+      if (moved) {
+        on = parseFloat(knob.dataset.x) > MAX_X / 2;
+      } else {
+        on = !startOn;   // คลิกธรรมดา = สลับสถานะ
+      }
+      knob.style.transform = '';
+      setState(toggle, sensor, on);
+    });
+
+    toggle.addEventListener('pointercancel', () => {
+      dragging = false;
+      toggle.classList.remove('dragging');
+      knob.style.transform = '';
+    });
+
+    toggle.addEventListener('keydown', e => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        setState(toggle, sensor, !toggle.classList.contains('on'));
+      } else if (e.key === 'ArrowRight') setState(toggle, sensor, true);
+      else if (e.key === 'ArrowLeft')  setState(toggle, sensor, false);
+    });
+  }
+
+  initToggle('toggle1', sensors[0]);
+  initToggle('toggle2', sensors[1]);
+</script>
+</body>
+</html>
